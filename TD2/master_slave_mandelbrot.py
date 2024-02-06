@@ -61,6 +61,7 @@ width, height = 1<<10, 1<<10
 scaleX = 3./width
 scaleY = 2.25/height
 convergence = np.empty((width, height), dtype=np.double)
+line_buff = np.empty((width, 1), dtype=np.double)
 
 
 if rank == 0:
@@ -68,31 +69,39 @@ if rank == 0:
     for iProc in range(1,nbp):
         globCom.send(next_line, iProc)
         next_line += 1
+        
     stat : MPI.Status = MPI.Status()
     while next_line < height:
-        conv = globCom.recv(status=stat)# On reçoit du premier process à envoyer un message
-        convergence += conv
+        conv = globCom.recv(status=stat) # On reçoit du premier process à envoyer un message
+        conv = conv.reshape(conv.shape[0],)
         slaveRk = stat.source
+        line = stat.tag
+        convergence[:,line] += conv
         globCom.send(next_line, dest=slaveRk)
         next_line += 1
+        
     next_line = -1 # next_line vaut maintenant -1 pour signaler aux autres procs qu'il n'y a plus de tâches à exécuter
     for iProc in range(1,nbp):
-        status = MPI.Status()
-        conv = globCom.recv(status=status)# On reçoit du premier process à envoyer un message
-        convergence += conv
-        slaveRk = status.source
+        stat = MPI.Status()
+        conv = globCom.recv(status=stat) # On reçoit du premier process à envoyer un message
+        conv = conv.reshape(conv.shape[0],)
+        slaveRk = stat.source
+        line = stat.tag
+        convergence[:,line] += conv
         globCom.send(next_line, dest=slaveRk)
+        
 
 else:
+    deb = time()
     line = globCom.recv(source=0)
     while line != -1:
         for x in range(width):
             c = complex(-2. + scaleX*x, -1.125 + scaleY * line)
-            convergence[x, line] = mandelbrot_set.convergence(c, smooth=True)
-        globCom.send(convergence, dest=0)
-        for x in range(width):
-            convergence[x, line] = 0
+            line_buff[x] = mandelbrot_set.convergence(c, smooth=True)
+        globCom.send(line_buff, dest=0, tag=line)
         line = globCom.recv(source=0)
+    fin = time()
+    print(f"Temps du calcul pour le rank {rank} de l'ensemble de Mandelbrot : {fin-deb}")
 
 if rank == 0:
     # Constitution de l'image résultante :
@@ -101,5 +110,3 @@ if rank == 0:
     fin = time()
     print(f"Temps de constitution de l'image : {fin-deb}")
     image.show()
-
-print(f"End of rank {rank}")
