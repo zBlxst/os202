@@ -56,15 +56,14 @@ name    = MPI.Get_processor_name()
 
 # On peut changer les paramètres des deux prochaines lignes
 mandelbrot_set = MandelbrotSet(max_iterations=50, escape_radius=10)
-width, height = 1<<10, 1<<10
+width, height = 1<<14, 1<<14
 
 scaleX = 3./width
 scaleY = 2.25/height
-convergence = np.empty((width, height), dtype=np.double)
-line_buff = np.empty((width, 1), dtype=np.double)
 
 
 if rank == 0:
+    convergence = np.empty((width, height), dtype=np.float32)
     next_line = 0
     for iProc in range(1,nbp):
         globCom.send(next_line, iProc)
@@ -92,6 +91,7 @@ if rank == 0:
         
 
 else:
+    line_buff = np.empty((width, 1), dtype=np.float32)
     deb = time()
     line = globCom.recv(source=0)
     while line != -1:
