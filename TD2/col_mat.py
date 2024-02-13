@@ -16,19 +16,19 @@ dim = 120
 part = ((dim*rank) // nbp, (dim*(rank+1)) // nbp)
 step = dim // nbp
 A = np.array([[(i+j) % dim+1. for i in range(part[0], part[1])] for j in range(dim)])
-print(f"A = {A}")
+# print(f"A = {A}")
 
 # Initialisation du vecteur u
 u = np.array([i+1. for i in range(dim+step)])
-print(f"u = {u}")
+# print(f"u = {u}")
 
 # Produit matrice-vecteur
 
 v = [A[i].dot(u[rank*step:(rank+1)*step]) for i in range(dim)]
 # v = A.dot(u)
-print(f"v = {v}")
+# print(f"v = {v}")
 
-data = globCom.allreduce(v, lambda x, y : [x[i] + y[i] for i in range(len(x))])
+data = np.array(globCom.allreduce(v, lambda x, y : [x[i] + y[i] for i in range(len(x))]))
 
 if rank == 0:
     print(data)

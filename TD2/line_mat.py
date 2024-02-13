@@ -25,7 +25,7 @@ print(f"u = {u}")
 v = A.dot(u)
 print(f"v = {v}")
 
-data = globCom.allgather(v)
+data = np.concatenate(globCom.allgather(v), axis=0)
 
 if rank == 0:
     print(data)
